@@ -4,10 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
-import com.android.volley.RequestQueue
-import com.android.volley.Response
-import com.android.volley.toolbox.JsonObjectRequest
-import com.android.volley.toolbox.Volley
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
@@ -15,6 +11,15 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.Scopes
 import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Task
+import com.squareup.moshi.Moshi
+import moe.banana.jsonapi2.JsonApiConverterFactory
+import moe.banana.jsonapi2.ResourceAdapterFactory
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.Retrofit
 
 class MainActivity : AppCompatActivity() {
     private var tag = "MainActivity"
@@ -23,7 +28,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var session: Session
 
     private lateinit var googleSignInClient: GoogleSignInClient
-    private lateinit var requestQueue: RequestQueue
+
+    private lateinit var backendClient: OkHttpClient
+    private lateinit var retrofit: Retrofit
+    private lateinit var backendService: BackendService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +45,25 @@ class MainActivity : AppCompatActivity() {
             .build()
         googleSignInClient = GoogleSignIn.getClient(this, googleSignInOptions)
 
-        requestQueue = Volley.newRequestQueue(this)
+        val logger = HttpLoggingInterceptor()
+        logger.level = HttpLoggingInterceptor.Level.BODY
+        backendClient = OkHttpClient.Builder()
+            .addInterceptor(logger)
+            .build()
+
+        val factory = ResourceAdapterFactory.builder()
+            .add(User::class.java)
+            .build()
+        val moshi = Moshi.Builder()
+            .add(factory)
+            .build()
+
+        retrofit = Retrofit.Builder()
+            .client(backendClient)
+            .baseUrl(getString(R.string.server_origin))
+            .addConverterFactory(JsonApiConverterFactory.create(moshi))
+            .build()
+        backendService = retrofit.create(BackendService::class.java)
     }
 
     override fun onStart() {
@@ -62,21 +88,21 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleSignInResult(completedTask: Task<GoogleSignInAccount>) {
         val account = completedTask.result
-        val url = "${getString(R.string.server_origin)}/auth/sign_in?code=${account?.serverAuthCode}"
-        val request = JsonObjectRequest(url, null,
-            Response.Listener { response ->
-                val data = response.getJSONObject("data")
-                val attributes = data.getJSONObject("attributes")
-                session.signIn(
-                    data.getString("id"),
-                    attributes.getString("email"),
-                    attributes.getString("authentication-token")
-                )
-            },
-            Response.ErrorListener { error ->
-                Log.e(tag, "failed", error)
-            }
-        )
-        requestQueue.add(request)
+
+        val code = account?.serverAuthCode
+        Log.d(tag, "got code: $code")
+        if (code != null) {
+            val user = backendService.signIn(code).enqueue(object : Callback<User> {
+                override fun onResponse(call: Call<User>, response: Response<User>) {
+                    val user = response.body()
+                    if (user != null) {
+                        session.signIn(user.id, user.email, user.authenticationToken)
+                    }
+                }
+                override fun onFailure(call: Call<User>, t: Throwable) {
+                    Log.e(tag, "sign in request failed", t)
+                }
+            })
+        }
     }
 }
