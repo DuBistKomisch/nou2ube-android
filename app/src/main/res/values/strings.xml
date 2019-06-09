@@ -4,7 +4,5 @@
     <string name="scope_youtube_readonly">https://www.googleapis.com/auth/youtube.readonly</string>
     <string name="server_origin">https://api.noutu.be</string>
     <string name="session_preference_name">session</string>
-    <string name="session_id_key">id</string>
-    <string name="session_email_key">email</string>
-    <string name="session_authentication_token_key">authenticationToken</string>
+    <string name="sign_out_button_label">Sign Out</string>
 </resources>

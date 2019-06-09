@@ -2,16 +2,19 @@ package es.jakebarn.nou2ube
 
 import android.content.Intent
 import android.os.Bundle
-import android.support.v7.app.AppCompatActivity
 import android.util.Log
+import androidx.appcompat.app.AppCompatActivity
+import androidx.databinding.DataBindingUtil
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.Scopes
+import com.google.android.gms.common.SignInButton
 import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Task
 import com.squareup.moshi.Moshi
+import es.jakebarn.nou2ube.databinding.ActivityMainBinding
 import moe.banana.jsonapi2.JsonApiConverterFactory
 import moe.banana.jsonapi2.ResourceAdapterFactory
 import okhttp3.OkHttpClient
@@ -35,9 +38,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        val binding: ActivityMainBinding = DataBindingUtil.setContentView(this, R.layout.activity_main)
+        binding.lifecycleOwner = this
 
         session = Session.getInstance(this)
+        binding.session = session
 
         val googleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestScopes(Scope(Scopes.EMAIL), Scope(getString(R.string.scope_youtube_readonly)))
@@ -64,17 +69,11 @@ class MainActivity : AppCompatActivity() {
             .addConverterFactory(JsonApiConverterFactory.create(moshi))
             .build()
         backendService = retrofit.create(BackendService::class.java)
-    }
 
-    override fun onStart() {
-        super.onStart()
-
-        if (session.signedIn) {
-            Log.i(tag, "was signed in as: ${session.id}, ${session.email}, ${session.authenticationToken}")
-            session.signOut()
+        val signInButton: SignInButton = findViewById(R.id.sign_in_button)
+        signInButton.setOnClickListener {
+            startActivityForResult(googleSignInClient.signInIntent, rcSignIn)
         }
-
-        startActivityForResult(googleSignInClient.signInIntent, rcSignIn)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -88,11 +87,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleSignInResult(completedTask: Task<GoogleSignInAccount>) {
         val account = completedTask.result
-
         val code = account?.serverAuthCode
         Log.d(tag, "got code: $code")
         if (code != null) {
-            val user = backendService.signIn(code).enqueue(object : Callback<User> {
+            backendService.signIn(code).enqueue(object : Callback<User> {
                 override fun onResponse(call: Call<User>, response: Response<User>) {
                     val user = response.body()
                     if (user != null) {
