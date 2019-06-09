@@ -3,6 +3,7 @@ package es.jakebarn.nou2ube
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import com.google.android.gms.auth.api.signin.GoogleSignIn
@@ -49,6 +50,13 @@ class MainActivity : AppCompatActivity() {
         val signInButton: SignInButton = findViewById(R.id.sign_in_button)
         signInButton.setOnClickListener {
             startActivityForResult(googleSignInClient.signInIntent, rcSignIn)
+        }
+
+        val signOutButton: Button = findViewById(R.id.sign_out_button)
+        signOutButton.setOnClickListener {
+            googleSignInClient.signOut().addOnCompleteListener {
+                session.signOut()
+            }
         }
 
         if (session.signedIn) {
