@@ -1,4 +1,4 @@
-package es.jakebarn.nou2ube;
+package es.jakebarn.nou2ube.data;
 
 import com.squareup.moshi.Json;
 import moe.banana.jsonapi2.JsonApi;
