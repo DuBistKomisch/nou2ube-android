@@ -6,11 +6,10 @@ import android.util.Log
 import androidx.databinding.Bindable
 import es.jakebarn.nou2ube.util.ObservableViewModel
 import es.jakebarn.nou2ube.util.SingletonHolder
+import es.jakebarn.nou2ube.util.TAG
 
 class Session private constructor(context: Context) : ObservableViewModel(), SharedPreferences.OnSharedPreferenceChangeListener {
     companion object : SingletonHolder<Session, Context>(::Session)
-
-    private val tag = "Session"
 
     private val preferenceName = context.getString(R.string.session_preference_name)
     private val sharedPreferences = context.getSharedPreferences(preferenceName, Context.MODE_PRIVATE)
@@ -47,7 +46,7 @@ class Session private constructor(context: Context) : ObservableViewModel(), Sha
         editor.putString("authenticationToken", authenticationToken)
         editor.apply()
 
-        Log.i(tag, "signed in as ${this.email}")
+        Log.i(TAG, "signed in as ${this.email}")
     }
 
     fun signOut() {
@@ -56,6 +55,6 @@ class Session private constructor(context: Context) : ObservableViewModel(), Sha
         editor.remove("authenticationToken")
         editor.apply()
 
-        Log.i(tag, "signed out")
+        Log.i(TAG, "signed out")
     }
 }

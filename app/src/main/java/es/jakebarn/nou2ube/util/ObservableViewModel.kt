@@ -4,6 +4,13 @@ import androidx.databinding.Observable
 import androidx.databinding.PropertyChangeRegistry
 import androidx.lifecycle.ViewModel
 
+/*
+ * Taken from official tutorials and sample code:
+ *
+ * https://github.com/googlesamples/android-databinding/blob/
+ * 347dd33538b2e74e2713524d3a96ee12a4cd1575/BasicSample/app/src/main/java/com/
+ * example/android/databinding/basicsample/util/ObservableViewModel.kt
+ */
 open class ObservableViewModel : ViewModel(), Observable {
     private val callbacks: PropertyChangeRegistry = PropertyChangeRegistry()
 
