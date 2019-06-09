@@ -8,7 +8,6 @@ import moe.banana.jsonapi2.JsonApiConverterFactory
 import moe.banana.jsonapi2.ResourceAdapterFactory
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Call
 import retrofit2.Retrofit
 import retrofit2.http.GET
 import retrofit2.http.Query
@@ -16,16 +15,16 @@ import java.util.*
 
 interface BackendService {
     @GET("auth/sign_in")
-    fun signIn(@Query("code") code: String): Call<User>
+    suspend fun signIn(@Query("code") code: String): User
 
     @GET("auth/restore")
-    fun restore(): Call<User>
+    suspend fun restore(): User
 
     @GET("subscriptions")
-    fun getSubscriptions(): Call<List<Subscription>>
+    suspend fun getSubscriptions(): List<Subscription>
 
     @GET("items")
-    fun getItems(): Call<List<Item>>
+    suspend fun getItems(): List<Item>
 }
 
 fun BackendService(context: Context): BackendService {

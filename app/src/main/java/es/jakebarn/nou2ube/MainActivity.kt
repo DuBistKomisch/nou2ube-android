@@ -15,13 +15,11 @@ import com.google.android.gms.common.SignInButton
 import com.google.android.gms.common.api.Scope
 import com.google.android.gms.tasks.Task
 import es.jakebarn.nou2ube.data.BackendService
-import es.jakebarn.nou2ube.data.Item
-import es.jakebarn.nou2ube.data.Subscription
-import es.jakebarn.nou2ube.data.User
 import es.jakebarn.nou2ube.databinding.ActivityMainBinding
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     private var tag = "MainActivity"
@@ -62,45 +60,22 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (session.signedIn) {
-            backendService.restore().enqueue(object : Callback<User> {
-                override fun onResponse(call: Call<User>, response: Response<User>) {
-                    response.body()?.let { user ->
-                        session.signIn(user.id, user.email, user.authenticationToken)
-                    }
+            CoroutineScope(Dispatchers.IO).launch {
+                val user = backendService.restore()
+                withContext(Dispatchers.Main) {
+                    session.signIn(user.id, user.email, user.authenticationToken)
                 }
 
-                override fun onFailure(call: Call<User>, t: Throwable) {
-                    Log.e(tag, "restore failed", t)
-                }
-            })
+                val subscriptions = backendService.getSubscriptions()
+                val firstSubscription = subscriptions.first()
+                val firstChannel = firstSubscription.channel.get(firstSubscription.document)
+                Log.i(tag, "subscriptions: ${subscriptions.size}, first channel: ${firstChannel.title}")
 
-            backendService.getSubscriptions().enqueue(object : Callback<List<Subscription>> {
-                override fun onResponse(call: Call<List<Subscription>>, response: Response<List<Subscription>>) {
-                    response.body()?.let { subscriptions ->
-                        val firstSubscription = subscriptions.first()
-                        val firstChannel = firstSubscription.channel.get(firstSubscription.document)
-                        Log.i(tag, "subscriptions: ${subscriptions.size}, first channel: ${firstChannel.title}")
-                    }
-                }
-
-                override fun onFailure(call: Call<List<Subscription>>, t: Throwable) {
-                    Log.e(tag, "get subscriptions failed", t)
-                }
-            })
-
-            backendService.getItems().enqueue(object : Callback<List<Item>> {
-                override fun onResponse(call: Call<List<Item>>, response: Response<List<Item>>) {
-                    response.body()?.let { items ->
-                        val firstItem = items.first()
-                        val firstVideo = firstItem.video.get(firstItem.document)
-                        Log.i(tag, "items: ${items.size}, first video: ${firstVideo.title} ${firstVideo.publishedAt}")
-                    }
-                }
-
-                override fun onFailure(call: Call<List<Item>>, t: Throwable) {
-                    Log.e(tag, "get subscriptions failed", t)
-                }
-            })
+                val items = backendService.getItems()
+                val firstItem = items.first()
+                val firstVideo = firstItem.video.get(firstItem.document)
+                Log.i(tag, "items: ${items.size}, first video: ${firstVideo.title} ${firstVideo.publishedAt}")
+            }
         }
     }
 
@@ -115,17 +90,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleSignInResult(completedTask: Task<GoogleSignInAccount>) {
         completedTask.result?.serverAuthCode?.let { code ->
-            backendService.signIn(code).enqueue(object : Callback<User> {
-                override fun onResponse(call: Call<User>, response: Response<User>) {
-                    response.body()?.let { user ->
-                        session.signIn(user.id, user.email, user.authenticationToken)
-                    }
+            CoroutineScope(Dispatchers.IO).launch {
+                val user = backendService.signIn(code)
+                withContext(Dispatchers.Main) {
+                    session.signIn(user.id, user.email, user.authenticationToken)
                 }
-
-                override fun onFailure(call: Call<User>, t: Throwable) {
-                    Log.e(tag, "sign in request failed", t)
-                }
-            })
+            }
         }
     }
 }
