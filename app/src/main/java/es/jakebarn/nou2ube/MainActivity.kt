@@ -1,19 +1,17 @@
 package es.jakebarn.nou2ube
 
-import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
+import com.github.florent37.inlineactivityresult.kotlin.coroutines.startForResult
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.Scopes
 import com.google.android.gms.common.SignInButton
 import com.google.android.gms.common.api.Scope
-import com.google.android.gms.tasks.Task
 import es.jakebarn.nou2ube.data.BackendService
 import es.jakebarn.nou2ube.databinding.ActivityMainBinding
 import kotlinx.coroutines.CoroutineScope
@@ -23,7 +21,6 @@ import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
     private var tag = "MainActivity"
-    private var rcSignIn = 1
 
     private lateinit var session: Session
 
@@ -49,7 +46,18 @@ class MainActivity : AppCompatActivity() {
 
         val signInButton: SignInButton = findViewById(R.id.sign_in_button)
         signInButton.setOnClickListener {
-            startActivityForResult(googleSignInClient.signInIntent, rcSignIn)
+            CoroutineScope(Dispatchers.Main).launch {
+                val data = startForResult(googleSignInClient.signInIntent).data
+                val task = GoogleSignIn.getSignedInAccountFromIntent(data)
+                task.result?.serverAuthCode?.let { code ->
+                    withContext(Dispatchers.IO) {
+                        val user = backendService.signIn(code)
+                        withContext(Dispatchers.Main) {
+                            session.signIn(user.id, user.email, user.authenticationToken)
+                        }
+                    }
+                }
+            }
         }
 
         val signOutButton: Button = findViewById(R.id.sign_out_button)
@@ -75,26 +83,6 @@ class MainActivity : AppCompatActivity() {
                 val firstItem = items.first()
                 val firstVideo = firstItem.video.get(firstItem.document)
                 Log.i(tag, "items: ${items.size}, first video: ${firstVideo.title} ${firstVideo.publishedAt}")
-            }
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode == rcSignIn) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(data)
-            handleSignInResult(task)
-        }
-    }
-
-    private fun handleSignInResult(completedTask: Task<GoogleSignInAccount>) {
-        completedTask.result?.serverAuthCode?.let { code ->
-            CoroutineScope(Dispatchers.IO).launch {
-                val user = backendService.signIn(code)
-                withContext(Dispatchers.Main) {
-                    session.signIn(user.id, user.email, user.authenticationToken)
-                }
             }
         }
     }
